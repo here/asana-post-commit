@@ -16,8 +16,6 @@
 # git config --local user.asana-project "PROJECT_ID" (found in the URL)
 # -----------------------
 
-# todo: rewrite in python using sh, requests
-# todo: possibly use asana api wrapper https://github.com/pandemicsyn/asana
 # todo: rewrite to work as a pre-push hook to allow for rebasing and amending 
 # before pushing to bitbucket and without sending comments to asana.
 
@@ -114,7 +112,6 @@ done
 
 
 # touch the stories we've referenced
-# todo: echo errors at this stage as appropriate.
 for element in "${referenced[@]}"
 do
     curl -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element}/stories \
