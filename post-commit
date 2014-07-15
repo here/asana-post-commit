@@ -1,18 +1,56 @@
 #!/bin/bash
 
 # modified from http://brunohq.com/journal/speed-project-git-hook-for-asana/
+# modified from https://github.com/Spaceman-Labs/asana-post-commit/
+# maintained at https://github.com/here/asana-post-commit
 
 # -----------------------
 # necessary configuration:
+# Asana API key
 # git config --global user.asana-key "MY_ASANA_API_KEY" (http://app.asana.com/-/account_api)
+# Link to prepend before <sha> to reference commit on github, bitbucket, etc
+# git config --local user.repo-link 'http://bitbucket.org/user/repo/commits/'
 #
 # not necessary at the moment, but may be useful in future revisions of the script:
 # git config --local user.asana-workspace "WORKSPACE_ID" (found in the URL)
 # git config --local user.asana-project "PROJECT_ID" (found in the URL)
 # -----------------------
 
+# todo: rewrite in python using sh, requests
+# todo: possibly use asana api wrapper https://github.com/pandemicsyn/asana
+# todo: rewrite to work as a pre-push hook to allow for rebasing and amending 
+# before pushing to bitbucket and without sending comments to asana.
+
+echo "running hooks/post-commit"
+
 apikey=$(git config user.asana-key)
-if [ $apikey == '' ] ; then exit 0; fi
+if [ "$apikey" == '' ] ; then
+        echo '$apikey is empty'
+        exit 0
+fi
+
+# https://app.asana.com/${aworkspace}/${aproject}/${$element} 
+
+aworkspace=$(git config user.asana-workspace)
+if [ "$aworkspace" == '' ] ; then
+        echo '$aworkspace is empty'
+        echo "git config --local user.asana-workspace 'WORKSPACE_ID'"
+#        exit 0
+fi
+
+aproject=$(git config user.asana-key)
+if [ "$aproject" == '' ] ; then
+        echo '$aproject is empty'
+        echo "git config --local user.asana-project 'PROJECT_ID'"
+#        exit 0
+fi
+
+repolink=$(git config user.repo-link)
+if [ "$repolink" == "" ]; then
+        echo '$repolink is empty'
+        echo "git config --local user.repo-link 'http://bitbucket.org/user/repo/commits/'"
+        exit 0
+fi
 
 # hold the closed ticket numbers
 declare -a closed
@@ -31,32 +69,52 @@ and_pattern='([Aa]nd|&)'
 # get the checkin comment for parsing
 comment=$(git log --pretty=format:"%s %b" -n1)
 repo=${PWD##*/}
-print_comment=$(git log --pretty=format:"Just committed %h with message:
-\"%s\"
-to repository $repo" -n1)
+
+#print_comment=$(git log --pretty=format:"Just committed %h with message:
+#\"%s\"
+#to repository $repo" -n1)
+
+print_comment="$(git log --pretty=medium -n1 --abbrev-commit)
+
+$repolink$(git log --pretty=format:"%h" -n1)"
+
+# debug
+echo "print_comment: 
+$print_comment"
 
 # break the commit comment down into words
+# todo: fix to work with a multiline comment
 IFS=' ' read -a words <<< "$comment"
 
 for element in "${words[@]}"
 do
+    # debug
+    # echo "element: ${element}"
+
     # if we have a task id, save it to the appropriate array
     if [[ $element =~ $taskid_pattern ]]; then
-	if [ "${closes}" == "YES" ]; then
-	    closed=("${closed[@]}" "${BASH_REMATCH[1]}")
-	fi
-	referenced=("${referenced[@]}" "${BASH_REMATCH[1]}")
-    # or else if we have a "closes" word, set the tracking bool accordingly
-    elif [[ $element =~ $closes_pattern ]]; then
-	closes='YES'
-    # and if we don't, set us back to referencing
-    # (if we're an "and", don't change any state)
-    elif [[ ! $element =~ $and_pattern ]]; then
-	closes='NO'
+        echo "taskid: ${element}"
+
+        if [ "${closes}" == "YES" ]; then
+            # debug
+            echo "closed"
+            closed=("${clos qqed[@]}" "${BASH_REMATCH[1]}")
+        fi
+        referenced=("${referenced[@]}" "${BASH_REMATCH[1]}")
+        # or else if we have a "closes" word, set the tracking bool accordingly
+        elif [[ $element =~ $closes_pattern ]]; then
+            closes='YES'
+            # and if we don't, set us back to referencing
+            # (if we're an "and", don't change any state)
+        elif [[ ! $element =~ $and_pattern ]]; then
+           closes='NO'
     fi
 done
 
+
+
 # touch the stories we've referenced
+# todo: echo errors at this stage as appropriate.
 for element in "${referenced[@]}"
 do
     curl -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element}/stories \
@@ -64,8 +122,10 @@ do
 done
 
 # close the tasks we've fixed
-for element in "${closed[@]}"
-do
-    curl --request PUT -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element} \
-         -d "completed=true" > /dev/null 2>&1
-done
+#for element in "${closed[@]}"
+#do
+#    curl --request PUT -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element} \
+#         -d "completed=true" > /dev/null 2>&1
+#done
+
+echo "end post-commit"
