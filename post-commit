@@ -119,11 +119,11 @@ do
 done
 
 # close the tasks we've fixed
-#for element in "${closed[@]}"
-#do
-#    curl --request PUT -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element} \
-#         -d "completed=true" > /dev/null 2>&1
-#done
+for element in "${closed[@]}"
+do
+    curl --request PUT -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element} \
+         -d "completed=true" > /dev/null 2>&1
+done
 
 echo "
 end post-commit"
