@@ -118,7 +118,7 @@ done
 for element in "${referenced[@]}"
 do
     curl -u ${apikey}: https://app.asana.com/api/1.0/tasks/${element}/stories \
-         -d "text=${print_comment}" > /dev/null 2>&1
+         -d "text=${print_comment}"
 done
 
 # close the tasks we've fixed
@@ -128,4 +128,5 @@ done
 #         -d "completed=true" > /dev/null 2>&1
 #done
 
-echo "end post-commit"
+echo "
+end post-commit"
